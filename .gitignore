@@ -1,0 +1,5 @@
+#bin directory
+source/bin
+
+#vscode folder
+.vscode
