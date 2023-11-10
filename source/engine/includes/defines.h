@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DEFINES_H
+#define DEFINES_H
 
 // Platform detection
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__)

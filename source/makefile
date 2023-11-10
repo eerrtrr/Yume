@@ -1,8 +1,8 @@
 # Define the compiler and flags
 CC := gcc
-CFLAGS := -Wall -Wextra -Iengine/includes -MMD -MP
+CFLAGS := -Wall -Wextra -Iengine/includes -MMD -MP -I/usr/include/vulkan -I/usr/include/xcb
 LDFLAGS :=
-LIBS := -lm
+LIBS := -lm -lvulkan -lxcb
 CHECK_LIBS := -lcheck -lsubunit -lm
 
 # Define directories
