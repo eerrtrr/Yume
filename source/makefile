@@ -1,40 +1,65 @@
-# Define compiler and flags
+# Define the compiler and flags
 CC := gcc
-CFLAGS := -Wall -Wextra -Iengine/include
+CFLAGS := -Wall -Wextra -Iengine/includes -MMD -MP
 LDFLAGS :=
+LIBS := -lm
+CHECK_LIBS := -lcheck -lsubunit -lm
 
-# Define paths
-SRC_DIR := engine/src
-INC_DIR := engine/include
-BUILD_DIR := bin
-TEST_DIR := test/src
+# Define directories
+ENGINE_DIR := engine
+BIN_DIR := bin
+TEST_DIR := tests
 
-# Define source and object files
-SRCS := $(wildcard $(SRC_DIR)/*.c)
-OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
-TEST_LIBS := `pkg-config --libs check`
-
-# Define your executable name
+# Define the main executable and test executable names
 EXEC := YumeEngine
+TEST_EXEC := $(BIN_DIR)/test_suite
+
+# Find all C source files in the engine directory and its subdirectories
+SRCS := $(shell find $(ENGINE_DIR) -type f -name '*.c')
+# Generate object file names by preserving the directory structure
+OBJS := $(SRCS:$(ENGINE_DIR)/%.c=$(BIN_DIR)/%.o)
+
+# Find all test source files
+TEST_SRCS := $(shell find $(TEST_DIR) -type f -name '*.c')
+TEST_OBJS := $(TEST_SRCS:$(TEST_DIR)/%.c=$(BIN_DIR)/%.o)
+
+# Dependency files
+DEPS := $(OBJS:.o=.d) $(TEST_OBJS:.o=.d)
 
 .PHONY: all clean test
 
 # Default target
 all: $(EXEC)
 
-# Link the executable
+# Link the main executable
 $(EXEC): $(OBJS)
-	$(CC) $(OBJS) -o $(BUILD_DIR)/$@ $(LDFLAGS)
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(LDFLAGS) -o $(BIN_DIR)/$@ $^ $(LIBS)
 
-# Compile the source files into object files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
+# Compile source files into object files
+$(BIN_DIR)/%.o: $(ENGINE_DIR)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Test target
+test: $(TEST_EXEC)
+	@echo "Running tests..."
+	@./$(TEST_EXEC)
+
+# Link the test executable
+# Make sure to include all necessary libraries
+$(TEST_EXEC): $(TEST_OBJS) $(filter-out $(BIN_DIR)/src/main.o, $(OBJS))
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS) $(CHECK_LIBS) -lm
+
+# Compile test source files into object files
+$(BIN_DIR)/%.o: $(TEST_DIR)/%.c
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Clean up build artifacts
 clean:
-	rm -rf $(BUILD_DIR)/*
+	rm -rf $(BIN_DIR)/*
 
-# Add a new target for test
-test: $(OBJS)
-	$(CC) $(CFLAGS) -o $(BUILD_DIR)/test_main $(TEST_DIR)/test_main.c $(LDFLAGS) $(TEST_LIBS)
-	./$(BUILD_DIR)/test_main
+# Include the dependency files
+-include $(DEPS)
