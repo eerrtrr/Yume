@@ -5,6 +5,7 @@
 // Global variables to hold Vulkan objects
 static VkInstance VK_Instance;
 static VkPhysicalDevice VK_Physical_Device;
+static VkDevice VK_Logical_Device;
 
 bool initializeVulkan(){
     VkApplicationInfo appInfo = {0};
@@ -27,6 +28,7 @@ bool initializeVulkan(){
     LOG_INFO("Create Vulkan instance");
 
     selectPhysicalDevice(VK_Instance);
+    createLogicalDevice(VK_Physical_Device, &VK_Logical_Device);
 
     cleanupVulkan();
     return true;
@@ -58,29 +60,29 @@ bool selectPhysicalDevice(VkInstance instance){
     return true;
 }
 
-bool isDeviceSuitable(VkPhysicalDevice device){
+bool isDeviceSuitable(VkPhysicalDevice physicalDevice){
     VkPhysicalDeviceProperties deviceProperties;
     VkPhysicalDeviceFeatures deviceFeatures;
-    vkGetPhysicalDeviceProperties(device, &deviceProperties);
-    vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+    vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+    vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
 
     //Check for graphics operation support and anisotropic filtering support for now
     bool isSuitable = deviceFeatures.samplerAnisotropy;
 
     if(isSuitable){
-        isSuitable = checkQueueFamilySupport(device);
+        isSuitable = checkQueueFamilySupport(physicalDevice);
     }
     return true;
 }
 
-bool checkQueueFamilySupport(VkPhysicalDevice device){
+bool checkQueueFamilySupport(VkPhysicalDevice physicalDevice){
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
 
     bool graphicsfamilyFound = false;
 
     VkQueueFamilyProperties queueFamilies[queueFamilyCount];
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
 
     for(uint32_t i=0; i<queueFamilyCount; i++){
         if(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT){
@@ -91,6 +93,53 @@ bool checkQueueFamilySupport(VkPhysicalDevice device){
 
     return graphicsfamilyFound;
 }
+
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice){
+    QueueFamilyIndices indices = {-1};
+
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, NULL);
+    
+    VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies);
+
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            indices.graphicsFamily = i;
+            break;
+        }
+    }
+
+    return indices;
+}
+
+bool createLogicalDevice(VkPhysicalDevice physicalDevice, VkDevice* logicalDevice){
+    QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo queueCreateInfo = {0};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
+    queueCreateInfo.queueCount = 1;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    VkPhysicalDeviceFeatures deviceFeatures = {0};
+
+    VkDeviceCreateInfo createInfo = {0};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    createInfo.pQueueCreateInfos = &queueCreateInfo;
+    createInfo.queueCreateInfoCount = 1;
+    createInfo.pEnabledFeatures = &deviceFeatures;
+
+    if (vkCreateDevice(physicalDevice, &createInfo, NULL, logicalDevice) != VK_SUCCESS) {
+        LOG_FATAL("Failed to create logical device");
+        return false;
+    }
+
+    LOG_INFO("Create logical device");
+    return true;    
+}
+
 
 VkInstance getVulkanInstance(){
     return VK_Instance;
