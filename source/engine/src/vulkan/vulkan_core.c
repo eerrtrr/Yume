@@ -20,17 +20,22 @@ bool initializeVulkan(){
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
-    if(vkCreateInstance(&createInfo, NULL, &VK_Instance) != VK_SUCCESS){
+    if (vkCreateInstance(&createInfo, NULL, &VK_Instance) != VK_SUCCESS) {
         LOG_FATAL("Failed to create a Vulkan instance");
         return false;
     }
+    LOG_INFO("Created Vulkan instance");
 
-    LOG_INFO("Create Vulkan instance");
+    if (!selectPhysicalDevice(VK_Instance)) {
+        cleanupVulkan();
+        return false;
+    }
 
-    selectPhysicalDevice(VK_Instance);
-    createLogicalDevice(VK_Physical_Device, &VK_Logical_Device);
+    if (!createLogicalDevice(VK_Physical_Device, &VK_Logical_Device)) {
+        cleanupVulkan();
+        return false;
+    }
 
-    cleanupVulkan();
     return true;
 }
 
@@ -38,7 +43,7 @@ bool selectPhysicalDevice(VkInstance instance){
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, NULL);
 
-    if(deviceCount == 0){
+    if (deviceCount == 0) {
         LOG_FATAL("Failed to find GPUs with Vulkan support");
         return false;
     }
@@ -46,18 +51,18 @@ bool selectPhysicalDevice(VkInstance instance){
     VkPhysicalDevice devices[deviceCount];
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices);
 
-    //Pick the bette device
-    for(uint32_t i=0; i<deviceCount; i++){
-        if(isDeviceSuitable(devices[i])){
+    for (uint32_t i = 0; i < deviceCount; i++) {
+        if (isDeviceSuitable(devices[i])) {
             VK_Physical_Device = devices[i];
-            break;
+            VkPhysicalDeviceProperties physicalDeviceProperties;
+            vkGetPhysicalDeviceProperties(VK_Physical_Device, &physicalDeviceProperties);
+            LOG_INFO("Chosen physical device: %s", physicalDeviceProperties.deviceName);
+            return true;
         }
     }
 
-    VkPhysicalDeviceProperties physicalDeviceProperties;
-    vkGetPhysicalDeviceProperties(VK_Physical_Device, &physicalDeviceProperties);
-    LOG_INFO("Choose physcial device : %s", physicalDeviceProperties.deviceName);
-    return true;
+    LOG_FATAL("Failed to find a suitable GPU");
+    return false;
 }
 
 bool isDeviceSuitable(VkPhysicalDevice physicalDevice){
@@ -147,6 +152,12 @@ VkInstance getVulkanInstance(){
 
 
 void cleanupVulkan(){
-    LOG_DEBUG("Destroyed Vk instance");
-    vkDestroyInstance(VK_Instance, NULL);
+    if (VK_Logical_Device) {
+        vkDestroyDevice(VK_Logical_Device, NULL);
+        LOG_DEBUG("Destroyed logical device");
+    }
+    if (VK_Instance) {
+        vkDestroyInstance(VK_Instance, NULL);
+        LOG_DEBUG("Destroyed Vulkan instance");
+    }
 }
