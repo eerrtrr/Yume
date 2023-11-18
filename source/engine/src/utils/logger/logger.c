@@ -1,6 +1,7 @@
-#include "../../includes/utils/logger.h"
+#include "logger.h"
 #include <stdarg.h>
 #include <string.h>
+#include "../../platform/platform.h"
 
 static LogLevel currentLogLevel = LOG_LEVEL_DEBUG; // Default log level
 
@@ -13,6 +14,9 @@ LogLevel get_current_log_level(void) {
 }
 
 void log_message(LogLevel level, const char *file, int line, const char *fmt, ...) {
+    UNUSED(file);
+    UNUSED(line);
+    
     if (level < currentLogLevel) return;
 
     const char *levelStr = "";
@@ -24,10 +28,20 @@ void log_message(LogLevel level, const char *file, int line, const char *fmt, ..
         case LOG_LEVEL_FATAL: levelStr = "[FATAL]"; break;
     }
 
+    const int32_t msg_length = 32000;
+    char out_message[msg_length];
+    memset(out_message, 0, sizeof(out_message));
+
     printf("%s ", levelStr);
     va_list args;
     va_start(args, fmt);
-    vprintf(fmt, args);
+    vsnprintf(out_message, msg_length, fmt, args);
     va_end(args);
+
+    char out_message2[msg_length];
+    sprintf(out_message2, "%s%s\n", levelStr, out_message);
+
+    platform_console_write(out_message2, level);
+
     printf("\n");
 }

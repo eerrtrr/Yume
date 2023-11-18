@@ -2,8 +2,8 @@
 CC := gcc
 CFLAGS := -Wall -Wextra -Iengine/includes -MMD -MP -I/usr/include/vulkan -I/usr/include/xcb
 LDFLAGS :=
-LIBS := -lm -lvulkan -lxcb
-CHECK_LIBS := -lcheck -lsubunit -lm
+LIBS := -lm -lvulkan -lxcb -lX11 -lX11-xcb
+CHECK_LIBS := -lcheck -lsubunit -lm 
 
 # Define directories
 ENGINE_DIR := engine
